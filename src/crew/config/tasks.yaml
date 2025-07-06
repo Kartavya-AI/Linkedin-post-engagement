@@ -1,0 +1,67 @@
+query_strategy_task:
+  description: >
+    Analyze the user's query: {search_query} and create exactly 2-3 optimized LinkedIn search queries 
+    that can help identify potential customers. Focus on creating simple, natural language queries that target:
+    - Pain points and challenges your target customers face
+    - Industries and job titles of potential customers  
+    - Business problems your services can solve
+    - Keywords that indicate buying intent or need for your solutions
+    
+    Use simple, specific queries like "need ai solution for my business" without Boolean operators (AND, OR).
+    Create natural language phrases that people actually post about when they need help.
+    Avoid complex search syntax - use straightforward terms that match real LinkedIn posts.
+    
+    Generate only the most effective 2-3 simple queries for maximum customer acquisition potential.
+  expected_output: >
+    JSON format only containing:
+    {
+      "search_queries": ["query1", "query2", "query3"]
+    }
+
+data_collection_task:
+  description: >
+    Take the 2-3 optimized search queries and execute them using the linkedin_get_posts tool.
+    Call the linkedin_get_posts tool exactly once for each query (2-3 total API calls).
+    Collect post data including titles, content text, and URLs from each search.
+    Organize and compile all collected data efficiently.
+  expected_output: >
+    JSON format only containing:
+    {
+      "posts": [
+        {
+          "title": "post title",
+          "text": "post content text",
+          "url": "post URL"
+        }
+      ]
+    }
+
+engagement_creation_task:
+  description: >
+    Analyze all collected posts and create personalized, professional comments for each post that represent our company.
+    Generate thoughtful comments that subtly offer our services to potential customers while adding genuine value.
+    Comments should:
+    - Position our company as an expert solution provider
+    - Subtly mention how we can help solve their specific problems
+    - Offer assistance or consultation in a professional, non-pushy manner
+    - Build trust by demonstrating industry knowledge and expertise
+    - Include soft calls-to-action like "happy to discuss further" or "we've helped similar companies with this"
+    - Be engaging and encourage discussion while showcasing our capabilities
+    
+    Create comments that represent our company professionally and attract potential customers through value-driven engagement.
+    
+    IMPORTANT: Return ONLY valid JSON format with no additional text, explanations, or markdown formatting.
+  expected_output: >
+    Return ONLY the following JSON structure with no additional text or formatting:
+    {
+      "final_results": [
+        {
+          "title": "post title",
+          "text": "post content text",
+          "url": "post URL",
+          "comment": "agent created comment representing company and offering relevant services"
+        }
+      ]
+    }
+    
+    Do not include any text before or after the JSON. Do not use markdown code blocks. Return only valid JSON.
