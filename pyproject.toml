@@ -10,5 +10,6 @@ dependencies = [
     "requests>=2.32.4",
     "streamlit>=1.46.1",
     "apify-client>=1.8.0",
-    "pysqlite3-binary==0.5.4",
+    "linkedin-api>=2.3.1",
+    "pysqlite3-binary>=0.5.4"
 ]
