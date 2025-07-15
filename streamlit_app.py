@@ -36,6 +36,122 @@ st.markdown("**AI-powered LinkedIn content discovery and engagement automation**
 
 # Sidebar for input
 with st.sidebar:
+    st.header("🔑 API Configuration")
+    
+    # API Keys section
+    with st.expander("⚙️ API Keys & Tokens", expanded=False):
+        st.markdown("**Configure your API keys:**")
+        
+        gemini_api_key = st.text_input(
+            "Gemini API Key:",
+            value=os.getenv('GEMINI_API_KEY', ''),
+            type="password",
+            help="Your Google Gemini API key for AI processing"
+        )
+        
+        linkedin_client_id = st.text_input(
+            "LinkedIn Client ID:",
+            value=os.getenv('LINKEDIN_CLIENT_ID', ''),
+            help="Your LinkedIn app client ID"
+        )
+        
+        linkedin_client_secret = st.text_input(
+            "LinkedIn Client Secret:",
+            value=os.getenv('LINKEDIN_CLIENT_SECRET', ''),
+            type="password",
+            help="Your LinkedIn app client secret"
+        )
+        
+        linkedin_access_token = st.text_input(
+            "LinkedIn Access Token:",
+            value=os.getenv('LINKEDIN_ACCESS_TOKEN', ''),
+            type="password",
+            help="Your LinkedIn access token for posting comments"
+        )
+        
+        apify_token = st.text_input(
+            "Apify API Token:",
+            value=os.getenv('APIFY_TOKEN', ''),
+            type="password",
+            help="Your Apify token for LinkedIn scraping"
+        )
+        
+        # Update environment variables with user input
+        if gemini_api_key:
+            os.environ['GEMINI_API_KEY'] = gemini_api_key
+        if linkedin_client_id:
+            os.environ['LINKEDIN_CLIENT_ID'] = linkedin_client_id
+        if linkedin_client_secret:
+            os.environ['LINKEDIN_CLIENT_SECRET'] = linkedin_client_secret
+        if linkedin_access_token:
+            os.environ['LINKEDIN_ACCESS_TOKEN'] = linkedin_access_token
+        if apify_token:
+            os.environ['APIFY_TOKEN'] = apify_token
+        
+        # API status indicators
+        st.markdown("**API Status:**")
+        col1, col2 = st.columns(2)
+        with col1:
+            if os.getenv('GEMINI_API_KEY'):
+                st.success("✅ Gemini")
+            else:
+                st.error("❌ Gemini")
+            
+            if os.getenv('LINKEDIN_ACCESS_TOKEN'):
+                st.success("✅ LinkedIn")
+            else:
+                st.error("❌ LinkedIn")
+        
+        with col2:
+            if os.getenv('APIFY_TOKEN'):
+                st.success("✅ Apify")
+            else:
+                st.error("❌ Apify")
+        
+        # Help section for getting API keys
+        with st.expander("❓ Where to get API keys", expanded=False):
+            st.markdown("""
+            **🔑 API Key Sources:**
+            
+            **Gemini API Key:**
+            - Visit: [Google AI Studio](https://makersuite.google.com/app/apikey)
+            - Sign in with Google account
+            - Create new API key
+            
+            **LinkedIn Developer App:**
+            - Visit: [LinkedIn Developers](https://www.linkedin.com/developers/apps)
+            - Create new app or use existing
+            - Get Client ID and Client Secret
+            - Generate Access Token through OAuth flow
+            
+            **Apify Token:**
+            - Visit: [Apify Console](https://console.apify.com/account/integrations)
+            - Sign up/login to Apify
+            - Go to Integrations → API tokens
+            - Create new token
+            
+            **💡 Pro tip:** Save these in a `.env` file for automatic loading!
+            """)
+        
+        # Save configuration option
+        if st.button("💾 Save to .env file", use_container_width=True):
+            env_content = f"""# LinkedIn Agent Crew API Configuration
+# Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+GEMINI_API_KEY={gemini_api_key}
+LINKEDIN_CLIENT_ID={linkedin_client_id}
+LINKEDIN_CLIENT_SECRET={linkedin_client_secret}
+LINKEDIN_ACCESS_TOKEN={linkedin_access_token}
+APIFY_TOKEN={apify_token}
+"""
+            try:
+                with open('.env', 'w') as f:
+                    f.write(env_content)
+                st.success("✅ Configuration saved to .env file!")
+                st.info("🔄 Please restart the app to load from .env file")
+            except Exception as e:
+                st.error(f"❌ Failed to save .env file: {str(e)}")
+    
     st.header("🎯 Search Configuration")
     
     # User input for search query
@@ -58,8 +174,40 @@ with st.sidebar:
     execute_button = st.button(
         "🚀 Execute LinkedIn Crew", 
         type="primary",
-        use_container_width=True
+        use_container_width=True,
+        disabled=not all([
+            os.getenv('GEMINI_API_KEY'),
+            os.getenv('LINKEDIN_ACCESS_TOKEN'),
+            os.getenv('APIFY_TOKEN')
+        ])
     )
+    
+    # Show warning if required API keys are missing
+    missing_keys = []
+    if not os.getenv('GEMINI_API_KEY'):
+        missing_keys.append("Gemini API Key")
+    if not os.getenv('LINKEDIN_ACCESS_TOKEN'):
+        missing_keys.append("LinkedIn Access Token")
+    if not os.getenv('APIFY_TOKEN'):
+        missing_keys.append("Apify Token")
+    
+    if missing_keys:
+        st.warning(f"⚠️ Missing: {', '.join(missing_keys)}")
+        st.info("💡 Configure API keys above to enable execution")
+    
+    # Clear results button
+    if st.session_state.result_data is not None:
+        clear_button = st.button(
+            "🗑️ Clear Results",
+            use_container_width=True,
+            help="Clear current results and start fresh"
+        )
+        
+        if clear_button:
+            st.session_state.result_data = None
+            st.session_state.last_search_query = ""
+            st.session_state.comment_status = {}
+            st.rerun()
 
 # Main content area
 if execute_button and search_query:
@@ -227,19 +375,26 @@ if execute_button and search_query:
                 ]
             }
         
+        # Store results in session state and update search query
+        st.session_state.result_data = result_data
+        st.session_state.last_search_query = search_query
+        
         # Clear progress indicators
         progress_bar.empty()
         status_text.empty()
+
+elif execute_button and not search_query:
+    st.error("⚠️ Please enter a search query to proceed.")
+
+# Display results if they exist in session state (moved outside the execution block)
+if st.session_state.result_data and "final_results" in st.session_state.result_data:
+    st.success(f"✅ Found {len(st.session_state.result_data['final_results'])} posts with generated comments")
     
-    # Display results using the same formatting structure
-    if result_data and "final_results" in result_data:
-        st.success(f"✅ Found {len(result_data['final_results'])} posts with generated comments")
-        
-        # Results section
-        st.header("📋 Results")
-        
-        # Display each post and comment using the same structure as sample
-        for i, result in enumerate(result_data['final_results']):
+    # Results section
+    st.header("📋 Results")
+    
+    # Display each post and comment using the same structure as sample
+    for i, result in enumerate(st.session_state.result_data['final_results']):
             with st.container():
                 # Create columns for better layout
                 col1, col2 = st.columns([2, 1])
@@ -270,20 +425,40 @@ if execute_button and search_query:
                     )
                     
                     if comment_btn:
-                        # Post comment using LinkedIn API
-                        with st.spinner("Posting comment to LinkedIn..."):
-                            comment_result = post_linkedin_comment(
-                                post_url=result['url'],
-                                comment_text=result['comment']
-                            )
-                            
-                            if comment_result['success']:
-                                st.success(f"✅ {comment_result['message']}")
-                                if comment_result.get('comment_id'):
-                                    st.info(f"Comment ID: {comment_result['comment_id']}")
-                            else:
-                                st.error(f"❌ Failed to post comment: {comment_result['error']}")
-                                st.info("💡 Check your LINKEDIN_ACCESS_TOKEN in the .env file")
+                        # Check if LinkedIn access token is available
+                        current_token = os.getenv('LINKEDIN_ACCESS_TOKEN')
+                        if not current_token:
+                            st.error("❌ LinkedIn Access Token not configured!")
+                            st.info("💡 Please set your LinkedIn Access Token in the API Configuration section")
+                        else:
+                            # Post comment using LinkedIn API
+                            with st.spinner("Posting comment to LinkedIn..."):
+                                comment_result = post_linkedin_comment(
+                                    post_url=result['url'],
+                                    comment_text=result['comment'],
+                                    access_token=current_token
+                                )
+                                
+                                # Store comment result in session state
+                                post_key = f"post_{i}_{result['url']}"
+                                st.session_state.comment_status[post_key] = comment_result
+                                
+                                if comment_result['success']:
+                                    st.success(f"✅ {comment_result['message']}")
+                                    if comment_result.get('comment_id'):
+                                        st.info(f"Comment ID: {comment_result['comment_id']}")
+                                else:
+                                    st.error(f"❌ Failed to post comment: {comment_result['error']}")
+                                    st.info("💡 Check your LinkedIn Access Token in the API Configuration section")
+                    
+                    # Show previous comment status if exists
+                    post_key = f"post_{i}_{result['url']}"
+                    if post_key in st.session_state.comment_status:
+                        prev_result = st.session_state.comment_status[post_key]
+                        if prev_result['success']:
+                            st.info("✅ Comment already posted!")
+                        else:
+                            st.warning("⚠️ Previous posting attempt failed")
                     
                     # Copy comment button
                     copy_btn = st.button(
@@ -309,22 +484,19 @@ if execute_button and search_query:
                 
                 # Separator
                 st.divider()
-    else:
-        st.error("❌ No results found or invalid data format.")
 
-elif execute_button and not search_query:
-    st.error("⚠️ Please enter a search query to proceed.")
-
-else:
+# Handle case where no results are available
+elif st.session_state.result_data is None:
     # Welcome screen
     st.markdown("""
     ## 🎯 How it works:
     
-    1. **🔍 Enter your search query** - Describe what kind of LinkedIn posts you want to find
-    2. **🤖 AI creates optimized searches** - Our AI generates 2-3 strategic LinkedIn search queries
-    3. **📊 Collect relevant posts** - Find posts from potential customers using Apify scraper
-    4. **💬 Generate personalized comments** - AI creates engaging comments that represent your company
-    5. **🚀 Take action** - Review and post comments to engage with potential customers
+    1. **� Configure API Keys** - Set up your Gemini, LinkedIn, and Apify API keys in the sidebar
+    2. **�🔍 Enter your search query** - Describe what kind of LinkedIn posts you want to find
+    3. **🤖 AI creates optimized searches** - Our AI generates 2-3 strategic LinkedIn search queries
+    4. **📊 Collect relevant posts** - Find posts from potential customers using Apify scraper
+    5. **💬 Generate personalized comments** - AI creates engaging comments that represent your company
+    6. **🚀 Take action** - Review and post comments to engage with potential customers
     
     ## 📝 Example search queries:
     - "need AI solution for my business"
@@ -332,7 +504,12 @@ else:
     - "struggling with customer support efficiency"
     - "want to improve sales processes"
     
-    **👈 Enter your search query in the sidebar to get started!**
+    ## 🔧 Getting Started:
+    1. **Configure your API keys** in the sidebar (click "⚙️ API Keys & Tokens")
+    2. **Enter a search query** in the "Search Configuration" section
+    3. **Click "🚀 Execute LinkedIn Crew"** to start the process
+    
+    **👈 Start by configuring your API keys in the sidebar!**
     """)
 
 # Footer
