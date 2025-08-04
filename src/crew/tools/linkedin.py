@@ -6,9 +6,6 @@ import os
 from typing import Dict, Any
 from dotenv import load_dotenv
 from apify_client import ApifyClient
-from linkedin_api.clients.restli.client import RestliClient
-from linkedin_api.clients.restli.client import RestliClient
-
 # Load environment variables
 load_dotenv()
 
@@ -315,8 +312,10 @@ def linkedin_get_profile() -> Dict[str, Any]:
     
     try:
         # Initialize RestliClient
-        restli_client = RestliClient()
-        
+        restli_client = ApifyClient(
+            token=LINKEDIN_ACCESS_TOKEN
+)
+
         # Get profile data using RestliClient
         response = restli_client.get(
             resource_path="/userinfo",
